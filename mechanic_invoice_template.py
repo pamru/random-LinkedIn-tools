@@ -233,9 +233,9 @@ def header(c, data, blank):
         c.drawString(MARGIN_L + 38, PAGE_H - MARGIN_T - 32, "Auto Repair")
 
     c.setFillColor(NAVY)
-    c.setFont("Helvetica-Bold", 22)
-    title = "MECHANIC INVOICE"
-    tw = c.stringWidth(title, "Helvetica-Bold", 22)
+    c.setFont("Helvetica-Bold", 26)
+    title = "INVOICE"
+    tw = c.stringWidth(title, "Helvetica-Bold", 26)
     c.drawString(PAGE_W - MARGIN_R - tw, PAGE_H - MARGIN_T - 18, title)
     c.setFillColor(DARK_TEXT)
     c.setFont("Helvetica", 11)
