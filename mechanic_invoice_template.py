@@ -1,16 +1,18 @@
-"""Generate an editable PDF template for a mechanic invoice.
+"""Generate editable PDF templates for a mechanic invoice.
 
-Produces `mechanic_invoice_template.pdf` with AcroForm fields that can be
-filled in by any standard PDF reader (Acrobat, Preview, Foxit, browsers).
+Produces two files:
+  * mechanic_invoice_template_BLANK.pdf  - blank template for sale
+  * mechanic_invoice_template_SAMPLE.pdf - filled with dummy data for listing
+
+Every text area is an AcroForm field so buyers can fill it out in any PDF
+reader (Acrobat, Preview, Foxit, most browsers).
 """
 
-from reportlab.lib.colors import Color, HexColor, white, black
-from reportlab.lib.pagesizes import LETTER
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfgen import canvas
+import math
 
-OUTPUT = "mechanic_invoice_template.pdf"
+from reportlab.lib.colors import HexColor, white
+from reportlab.lib.pagesizes import LETTER
+from reportlab.pdfgen import canvas
 
 NAVY = HexColor("#1F3A68")
 DARK_TEXT = HexColor("#2B2B2B")
@@ -19,6 +21,7 @@ ROW_BG = HexColor("#EEF2F8")
 HEADER_BG = HexColor("#E4EAF3")
 BORDER = HexColor("#C9D2E0")
 FIELD_BG = HexColor("#F7F9FC")
+PLACEHOLDER_BG = HexColor("#F2F4F8")
 
 PAGE_W, PAGE_H = LETTER
 MARGIN_L = 40
@@ -27,10 +30,76 @@ MARGIN_T = 40
 CONTENT_W = PAGE_W - MARGIN_L - MARGIN_R
 
 
-def draw_gear(c, cx, cy, r_outer=14, r_inner=5, teeth=8):
-    """Draw a simple gear-shaped logo."""
-    import math
+SAMPLE_DATA = {
+    "shop_name": "Precision Auto Repair",
+    "invoice_number": "INV-10428",
+    "invoicing_date": "03/12/2026",
+    "service_date": "03/13/2026",
+    "vin": "4T1BF1FK5JU074891",
+    "license_plate": "TX-6422LM",
+    "year_make_model": "2018 Toyota Camry",
+    "mileage": "72,430",
+    "service_history": (
+        "Front brake pads worn below safety limit. Replaced pads and "
+        "inspected rotors. Performed full synthetic oil change and replaced "
+        "engine air filter. Vehicle test driven and operating normally."
+    ),
+    "customer_name": "Michael Torres",
+    "customer_address": "2147 Willow Creek Dr, Austin, TX 78704",
+    "customer_address_left": "2147 Willow Creek Dr, Austin, TX 78704",
+    "customer_phone": "(555) 482-1197",
+    "customer_email_1": "m.torres@email.com",
+    "customer_email_2": "m.torres@email.com",
+    "row1_desc": (
+        "Front brake pads worn below safety limit. Replaced pads and "
+        "inspected rotors."
+    ),
+    "row1_parts": "$120.00",
+    "row1_labor": "$150.00",
+    "row1_total": "$270.00",
+    "row2_desc": "Brake Pad Replacement",
+    "row2_parts": "$120.00",
+    "row2_labor": "$130.00",
+    "row2_total": "$250.00",
+    "row3_desc": "Oil Change (Full Synthetic)",
+    "row3_parts": "$45.00",
+    "row3_labor": "$23.00",
+    "row3_total": "$68.00",
+    "row4_desc": "Air Filter Replacement",
+    "row4_parts": "$25.00",
+    "row4_labor": "$15.00",
+    "row4_total": "$40.00",
+    "row5_desc": "",
+    "row5_parts": "",
+    "row5_labor": "",
+    "row5_total": "",
+    "row6_desc": "Shop Fees",
+    "row6_parts": "$10.00",
+    "row6_labor": "",
+    "row6_total": "$10.00",
+    "subtotal": "$638.00",
+    "tax": "$31.90",
+    "total": "$669.90",
+    "amount_paid": "$400.00",
+    "balance_due": "$269.90",
+    "notes": (
+        "Customer approved all recommended services prior to work. "
+        "Vehicle test driven post-repair and operating normally. "
+        "Next recommended service: 77,500 miles or 6 months."
+    ),
+    "general_condition": (
+        "Overall condition: Good. Tires at 6/32\". Battery tested healthy. "
+        "Recommend tire rotation at next service."
+    ),
+    "signature": "Michael Torres",
+    "signed_date": "03/13/2026",
+    "business_name_field": "Precision Auto Repair",
+}
 
+SAMPLE_CHECKBOXES = {"pm_card": True}
+
+
+def draw_gear(c, cx, cy, r_outer=14, r_inner=5, teeth=8):
     c.saveState()
     c.setFillColor(NAVY)
     c.setStrokeColor(NAVY)
@@ -47,16 +116,9 @@ def draw_gear(c, cx, cy, r_outer=14, r_inner=5, teeth=8):
             path.lineTo(x, y)
     path.close()
     c.drawPath(path, stroke=0, fill=1)
-    # inner hole
     c.setFillColor(white)
     c.circle(cx, cy, r_inner, stroke=0, fill=1)
     c.restoreState()
-
-
-def label(c, text, x, y, size=7.5, color=NAVY, bold=True):
-    c.setFillColor(color)
-    c.setFont("Helvetica-Bold" if bold else "Helvetica", size)
-    c.drawString(x, y, text)
 
 
 def section_title(c, text, x, y, size=10):
@@ -65,19 +127,22 @@ def section_title(c, text, x, y, size=10):
     c.drawString(x, y, text)
 
 
-def box(c, x, y, w, h, fill=None, stroke=BORDER, stroke_w=0.6):
+def box(c, x, y, w, h, fill=None, stroke=BORDER, stroke_w=0.6,
+        dashed=False):
     if fill is not None:
         c.setFillColor(fill)
     c.setStrokeColor(stroke)
     c.setLineWidth(stroke_w)
+    if dashed:
+        c.setDash(3, 2)
     c.rect(x, y, w, h, stroke=1, fill=1 if fill is not None else 0)
+    if dashed:
+        c.setDash()
 
 
 def text_field(c, name, x, y, w, h, value="", font_size=9, multiline=False,
                align="left"):
-    """Add an AcroForm text field inside the given rect."""
     form = c.acroForm
-    tf_align = {"left": "left", "center": "center", "right": "right"}[align]
     form.textfield(
         name=name,
         tooltip=name.replace("_", " ").title(),
@@ -99,21 +164,71 @@ def text_field(c, name, x, y, w, h, value="", font_size=9, multiline=False,
     )
 
 
-def header(c):
-    # Logo area
-    draw_gear(c, MARGIN_L + 16, PAGE_H - MARGIN_T - 24, r_outer=14)
-    c.setFillColor(NAVY)
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(MARGIN_L + 38, PAGE_H - MARGIN_T - 18, "Precision")
-    c.drawString(MARGIN_L + 38, PAGE_H - MARGIN_T - 32, "Auto Repair")
+def checkbox_field(c, name, x, y, size=10, checked=False):
+    form = c.acroForm
+    form.checkbox(
+        name=name,
+        tooltip=name.replace("_", " ").title(),
+        x=x,
+        y=y,
+        size=size,
+        buttonStyle="check",
+        borderColor=NAVY,
+        fillColor=white,
+        textColor=NAVY,
+        forceBorder=True,
+        checked=checked,
+    )
 
-    # Title on the right
+
+def draw_centered(c, text, x, y, w, font="Helvetica-Bold", size=8,
+                  color=NAVY):
+    c.setFillColor(color)
+    c.setFont(font, size)
+    tw = c.stringWidth(text, font, size)
+    c.drawString(x + (w - tw) / 2, y, text)
+
+
+def header(c, data, blank):
+    if blank:
+        # Logo placeholder box
+        logo_box_x = MARGIN_L
+        logo_box_y = PAGE_H - MARGIN_T - 44
+        logo_box_w = 60
+        logo_box_h = 44
+        box(c, logo_box_x, logo_box_y, logo_box_w, logo_box_h,
+            fill=PLACEHOLDER_BG, stroke=MUTED, dashed=True)
+        c.setFillColor(MUTED)
+        c.setFont("Helvetica-Bold", 7)
+        draw_centered(c, "YOUR LOGO", logo_box_x,
+                      logo_box_y + logo_box_h / 2 + 2, logo_box_w,
+                      color=MUTED)
+        draw_centered(c, "(replace in editor)", logo_box_x,
+                      logo_box_y + logo_box_h / 2 - 8, logo_box_w,
+                      font="Helvetica", size=6, color=MUTED)
+        # Business name editable field next to logo
+        bn_x = logo_box_x + logo_box_w + 8
+        bn_y = logo_box_y + 8
+        bn_w = 180
+        bn_h = 28
+        box(c, bn_x, bn_y, bn_w, bn_h, fill=FIELD_BG)
+        text_field(c, "business_name_field", bn_x, bn_y, bn_w, bn_h,
+                   value="", font_size=12)
+        c.setFillColor(MUTED)
+        c.setFont("Helvetica-Bold", 7)
+        c.drawString(bn_x, bn_y + bn_h + 3, "BUSINESS NAME")
+    else:
+        draw_gear(c, MARGIN_L + 16, PAGE_H - MARGIN_T - 24, r_outer=14)
+        c.setFillColor(NAVY)
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(MARGIN_L + 38, PAGE_H - MARGIN_T - 18, "Precision")
+        c.drawString(MARGIN_L + 38, PAGE_H - MARGIN_T - 32, "Auto Repair")
+
     c.setFillColor(NAVY)
     c.setFont("Helvetica-Bold", 22)
     title = "MECHANIC INVOICE"
     tw = c.stringWidth(title, "Helvetica-Bold", 22)
     c.drawString(PAGE_W - MARGIN_R - tw, PAGE_H - MARGIN_T - 18, title)
-
     c.setFillColor(DARK_TEXT)
     c.setFont("Helvetica", 11)
     sub = "Vehicle Service Invoice"
@@ -123,7 +238,6 @@ def header(c):
 
 def draw_labeled_field(c, name, x, y, w, value="", field_h=16,
                        label_text=None, label_color=MUTED):
-    """Draw a small label ABOVE a boxed text field, returning the field top y."""
     if label_text:
         c.setFillColor(label_color)
         c.setFont("Helvetica-Bold", 7)
@@ -132,60 +246,49 @@ def draw_labeled_field(c, name, x, y, w, value="", field_h=16,
     text_field(c, name, x, y, w, field_h, value=value, font_size=9)
 
 
-def draw_table_cell_field(c, name, x, y, w, h, value="", align="left",
-                          font_size=8, multiline=False):
-    box(c, x, y, w, h, fill=None, stroke=BORDER)
-    text_field(c, name, x, y, w, h, value=value, font_size=font_size,
-               align=align, multiline=multiline)
-
-
-def top_right_block(c, left_x, top_y):
-    """Shop Name / Invoice #, then Invoicing Date / Service Date."""
+def top_right_block(c, left_x, top_y, data):
     col_w = (CONTENT_W / 2 - 10) / 2
     gap = 10
-    # Row 1: Shop Name | Invoice #
     row1_y = top_y - 36
     draw_labeled_field(c, "shop_name", left_x, row1_y, col_w,
-                       value="Precision Auto Repair",
+                       value=data.get("shop_name", ""),
                        label_text="Shop Name")
     draw_labeled_field(c, "invoice_number", left_x + col_w + gap, row1_y,
-                       col_w, value="INV-10428",
+                       col_w, value=data.get("invoice_number", ""),
                        label_text="Invoice #")
-    # Row 2: Invoicing Date | Service Date
     row2_y = row1_y - 34
     draw_labeled_field(c, "invoicing_date", left_x, row2_y, col_w,
-                       value="03/12/2026",
+                       value=data.get("invoicing_date", ""),
                        label_text="Invoicing Date")
     draw_labeled_field(c, "service_date", left_x + col_w + gap, row2_y,
-                       col_w, value="INV-1/3026",
+                       col_w, value=data.get("service_date", ""),
                        label_text="Service Date")
     return row2_y
 
 
-def vehicle_information(c, x, y, w):
-    """Left-side VEHICLE INFORMATION block."""
+def vehicle_information(c, x, y, w, data):
     section_title(c, "VEHICLE INFORMATION", x, y)
     y -= 14
-    # Two-column grid: VIN | LICENSE PLATE, YEAR/MAKE/MODEL | MILEAGE
-    col_w = (w - 0) / 2
+    col_w = w / 2
     row_h = 30
-    # Header row
     header_h = 14
+
+    # Row 1 headers
     box(c, x, y - header_h, col_w, header_h, fill=HEADER_BG)
     box(c, x + col_w, y - header_h, col_w, header_h, fill=HEADER_BG)
     c.setFillColor(NAVY)
     c.setFont("Helvetica-Bold", 7.5)
     c.drawString(x + 5, y - header_h + 4, "VIN")
     c.drawString(x + col_w + 5, y - header_h + 4, "LICENSE PLATE")
-    # Value row 1
     vy = y - header_h - row_h
     box(c, x, vy, col_w, row_h, fill=FIELD_BG)
     box(c, x + col_w, vy, col_w, row_h, fill=FIELD_BG)
     text_field(c, "vin", x, vy, col_w, row_h,
-               value="415BFTKJUD74891", font_size=9)
+               value=data.get("vin", ""), font_size=9)
     text_field(c, "license_plate", x + col_w, vy, col_w, row_h,
-               value="TX-6422LM", font_size=9)
-    # Header row 2
+               value=data.get("license_plate", ""), font_size=9)
+
+    # Row 2 headers
     hy2 = vy - header_h
     box(c, x, hy2, col_w, header_h, fill=HEADER_BG)
     box(c, x + col_w, hy2, col_w, header_h, fill=HEADER_BG)
@@ -193,39 +296,30 @@ def vehicle_information(c, x, y, w):
     c.setFont("Helvetica-Bold", 7.5)
     c.drawString(x + 5, hy2 + 4, "YEAR / MAKE / MODEL")
     c.drawString(x + col_w + 5, hy2 + 4, "MILEAGE")
-    # Value row 2
     vy2 = hy2 - row_h
     box(c, x, vy2, col_w, row_h, fill=FIELD_BG)
     box(c, x + col_w, vy2, col_w, row_h, fill=FIELD_BG)
     text_field(c, "year_make_model", x, vy2, col_w, row_h,
-               value="2018 Toyota Camry", font_size=9)
+               value=data.get("year_make_model", ""), font_size=9)
     text_field(c, "mileage", x + col_w, vy2, col_w, row_h,
-               value="72,430", font_size=9)
-    # Service History
-    sh_y_label = vy2 - 16
+               value=data.get("mileage", ""), font_size=9)
+
+    sh_label_y = vy2 - 14
     c.setFillColor(NAVY)
     c.setFont("Helvetica-Bold", 8)
-    c.drawString(x, sh_y_label, "Service History")
-    sh_h = 48
-    sh_y = sh_y_label - 4 - sh_h
+    c.drawString(x, sh_label_y, "Service History")
+    sh_h = 36
+    sh_y = sh_label_y - 4 - sh_h
     box(c, x, sh_y, w, sh_h, fill=FIELD_BG)
-    text_field(
-        c, "service_history", x, sh_y, w, sh_h,
-        value=(
-            "Front brake pads worn below safety limit. Replaced pads and "
-            "inspected rotors. Performed full synthetic oil change and "
-            "replaced engine air filter. Vehicle test driven and operating "
-            "normally."
-        ),
-        font_size=8, multiline=True,
-    )
-    return sh_y  # bottom of this block
+    text_field(c, "service_history", x, sh_y, w, sh_h,
+               value=data.get("service_history", ""),
+               font_size=8, multiline=True)
+    return sh_y
 
 
-def customer_information(c, x, y, w):
+def customer_information(c, x, y, w, data):
     section_title(c, "CUSTOMER INFORMATION", x, y)
     y -= 14
-    # ADDRESS header + field
     header_h = 14
     box(c, x, y - header_h, w, header_h, fill=HEADER_BG)
     c.setFillColor(NAVY)
@@ -235,191 +329,220 @@ def customer_information(c, x, y, w):
     vy = y - header_h - row_h
     box(c, x, vy, w, row_h, fill=FIELD_BG)
     text_field(c, "customer_address_left", x, vy, w, row_h,
-               value="2147 Willow Creek Dr, Austin, TX 78704",
+               value=data.get("customer_address_left", ""),
                font_size=9)
     return vy
 
 
-def customer_contact(c, x, y, w):
+def customer_contact(c, x, y, w, data):
     section_title(c, "CUSTOMER CONTACT", x, y)
     y -= 14
     header_h = 14
     row_h = 22
 
-    def header_cell(cx, cw, txt):
-        box(c, cx, y - header_h, cw, header_h, fill=HEADER_BG)
+    def header_cell(cx, cw, txt, ty):
+        box(c, cx, ty, cw, header_h, fill=HEADER_BG)
         c.setFillColor(NAVY)
         c.setFont("Helvetica-Bold", 7.5)
-        c.drawString(cx + 5, y - header_h + 4, txt)
+        c.drawString(cx + 5, ty + 4, txt)
 
-    # CUSTOMER NAME
-    header_cell(x, w, "CUSTOMER NAME")
+    header_cell(x, w, "CUSTOMER NAME", y - header_h)
     cy = y - header_h - row_h
     box(c, x, cy, w, row_h, fill=FIELD_BG)
     text_field(c, "customer_name", x, cy, w, row_h,
-               value="Michael Torres", font_size=9)
-    # Address row (full width, no header label per image)
+               value=data.get("customer_name", ""), font_size=9)
     ay = cy - row_h
     box(c, x, ay, w, row_h, fill=FIELD_BG)
     text_field(c, "customer_address", x, ay, w, row_h,
-               value="2147 Willow Creek Dr, Austin, TX 78704",
-               font_size=9)
-    # PHONE
-    py_header = ay - header_h
-    box(c, x, py_header, w, header_h, fill=HEADER_BG)
-    c.setFillColor(NAVY)
-    c.setFont("Helvetica-Bold", 7.5)
-    c.drawString(x + 5, py_header + 4, "PHONE")
-    py = py_header - row_h
+               value=data.get("customer_address", ""), font_size=9)
+    header_cell(x, w, "PHONE", ay - header_h)
+    py = ay - header_h - row_h
     box(c, x, py, w, row_h, fill=FIELD_BG)
     text_field(c, "customer_phone", x, py, w, row_h,
-               value="(555) 482-1197", font_size=9)
-    # EMAIL / EMAIL split
-    eh_y = py - header_h
+               value=data.get("customer_phone", ""), font_size=9)
     half = w / 2
+    eh_y = py - header_h
     box(c, x, eh_y, half, header_h, fill=HEADER_BG)
     box(c, x + half, eh_y, half, header_h, fill=HEADER_BG)
     c.setFillColor(NAVY)
     c.setFont("Helvetica-Bold", 7.5)
     c.drawString(x + 5, eh_y + 4, "EMAIL")
-    c.drawString(x + half + 5, eh_y + 4, "EMAIL")
+    c.drawString(x + half + 5, eh_y + 4, "EMAIL (ALT)")
     ey = eh_y - row_h
     box(c, x, ey, half, row_h, fill=FIELD_BG)
     box(c, x + half, ey, half, row_h, fill=FIELD_BG)
     text_field(c, "customer_email_1", x, ey, half, row_h,
-               value="(555) 482-1197", font_size=9)
+               value=data.get("customer_email_1", ""), font_size=9)
     text_field(c, "customer_email_2", x + half, ey, half, row_h,
-               value="m.torres@email.com", font_size=9)
+               value=data.get("customer_email_2", ""), font_size=9)
     return ey
 
 
-def repair_services_table(c, x, y, w):
+def repair_services_table(c, x, y, w, data):
     section_title(c, "REPAIR SERVICES", x, y)
     y -= 14
-    # Columns: ITEM (wide) | PARTS COST | LABOR COST | TOTAL
     parts_w = 75
     labor_w = 75
     total_w = 75
     desc_w = w - parts_w - labor_w - total_w
-    header_h = 16
-    # Header row
-    box(c, x, y - header_h, desc_w, header_h, fill=HEADER_BG)
-    box(c, x + desc_w, y - header_h, parts_w, header_h, fill=HEADER_BG)
-    box(c, x + desc_w + parts_w, y - header_h, labor_w, header_h,
-        fill=HEADER_BG)
-    box(c, x + desc_w + parts_w + labor_w, y - header_h, total_w, header_h,
-        fill=HEADER_BG)
-    c.setFillColor(NAVY)
-    c.setFont("Helvetica-Bold", 7.5)
-    c.drawString(x + 5, y - header_h + 5, "ITEM / SERVICE DESCRIPTION")
-    c.drawString(x + desc_w + 10, y - header_h + 5, "PARTS COST")
-    c.drawString(x + desc_w + parts_w + 10, y - header_h + 5, "LABOR COST")
-    c.drawString(x + desc_w + parts_w + labor_w + 22, y - header_h + 5,
-                 "TOTAL")
+    header_h = 18
 
-    # Prepopulated rows (matching the image)
-    rows = [
-        (
-            "Front brake pads worn below safety limit. Replaced pads and "
-            "inspected rotors. Replaced pads and inspected rotors. "
-            "Performed full synthetic oil change and replaced engine air "
-            "filter. Vehicle test driven and operating normally.",
-            "$120.00", "$190.00", "$270.00", 46,
-        ),
-        ("Brake Pod Pod Replacement", "$120.00", "$130.00", "$190.00", 20),
-        ("OK Change (Full Synthetic)", "$45.00", "$20.00", "$68.00", 20),
-        ("Air Filter Replacement", "$25.00", "$15.00", "$40.00", 20),
-        ("", "", "", "", 20),
-        ("SHOP FEES", "$10.00", "", "$60.00", 20),
+    # Centered header labels
+    hy = y - header_h
+    box(c, x, hy, desc_w, header_h, fill=HEADER_BG)
+    box(c, x + desc_w, hy, parts_w, header_h, fill=HEADER_BG)
+    box(c, x + desc_w + parts_w, hy, labor_w, header_h, fill=HEADER_BG)
+    box(c, x + desc_w + parts_w + labor_w, hy, total_w, header_h,
+        fill=HEADER_BG)
+    ty = hy + 6
+    draw_centered(c, "ITEM / SERVICE DESCRIPTION", x, ty, desc_w,
+                  size=7.5)
+    draw_centered(c, "PARTS COST", x + desc_w, ty, parts_w, size=7.5)
+    draw_centered(c, "LABOR COST", x + desc_w + parts_w, ty, labor_w,
+                  size=7.5)
+    draw_centered(c, "TOTAL", x + desc_w + parts_w + labor_w, ty, total_w,
+                  size=7.5)
+
+    row_defs = [
+        ("row1", 44),
+        ("row2", 22),
+        ("row3", 22),
+        ("row4", 22),
+        ("row5", 22),
+        ("row6", 22),
     ]
 
-    cur_y = y - header_h
-    for i, (desc, parts, labor, total, rh) in enumerate(rows):
+    cur_y = hy
+    for i, (prefix, rh) in enumerate(row_defs):
         row_bg = ROW_BG if i % 2 == 0 else white
         cur_y -= rh
-        # row backgrounds + borders
         box(c, x, cur_y, desc_w, rh, fill=row_bg)
         box(c, x + desc_w, cur_y, parts_w, rh, fill=row_bg)
         box(c, x + desc_w + parts_w, cur_y, labor_w, rh, fill=row_bg)
         box(c, x + desc_w + parts_w + labor_w, cur_y, total_w, rh,
             fill=row_bg)
-        text_field(c, f"row{i+1}_desc", x, cur_y, desc_w, rh,
-                   value=desc, font_size=7.5, multiline=True)
-        text_field(c, f"row{i+1}_parts", x + desc_w, cur_y, parts_w, rh,
-                   value=parts, font_size=8, align="right")
-        text_field(c, f"row{i+1}_labor", x + desc_w + parts_w, cur_y,
-                   labor_w, rh, value=labor, font_size=8, align="right")
-        text_field(c, f"row{i+1}_total",
+        text_field(c, f"{prefix}_desc", x, cur_y, desc_w, rh,
+                   value=data.get(f"{prefix}_desc", ""),
+                   font_size=7.5, multiline=True)
+        text_field(c, f"{prefix}_parts", x + desc_w, cur_y, parts_w, rh,
+                   value=data.get(f"{prefix}_parts", ""),
+                   font_size=8, align="right")
+        text_field(c, f"{prefix}_labor", x + desc_w + parts_w, cur_y,
+                   labor_w, rh, value=data.get(f"{prefix}_labor", ""),
+                   font_size=8, align="right")
+        text_field(c, f"{prefix}_total",
                    x + desc_w + parts_w + labor_w, cur_y, total_w, rh,
-                   value=total, font_size=8, align="right")
+                   value=data.get(f"{prefix}_total", ""),
+                   font_size=8, align="right")
 
-    # Totals block to the right
     totals = [
-        ("Subtotal", "subtotal", "$275.00"),
-        ("Tax", "tax", "$31.50"),
-        ("Total", "total", "$408.50"),
-        ("Amount Paid", "amount_paid", "$200.00"),
-        ("Balance Due", "balance_due", "$266.50"),
+        ("Subtotal", "subtotal"),
+        ("Tax", "tax"),
+        ("Total", "total"),
+        ("Amount Paid", "amount_paid"),
+        ("Balance Due", "balance_due"),
     ]
     tot_h = 18
-    tot_x_label = x + desc_w  # right-aligned labels area spans parts col
+    tot_x_label = x + desc_w
     tot_x_val = x + desc_w + parts_w + labor_w
-    for lbl, name, val in totals:
+    for lbl, name in totals:
         cur_y -= tot_h
-        # label cell (spans parts+labor columns, right aligned text)
         c.setFillColor(DARK_TEXT)
         c.setFont("Helvetica-Bold", 8.5)
         lbl_w = parts_w + labor_w
         tw = c.stringWidth(lbl, "Helvetica-Bold", 8.5)
         c.drawString(tot_x_label + lbl_w - tw - 6, cur_y + 5, lbl)
-        # value cell
         box(c, tot_x_val, cur_y, total_w, tot_h, fill=white)
         text_field(c, name, tot_x_val, cur_y, total_w, tot_h,
-                   value=val, font_size=8.5, align="right")
+                   value=data.get(name, ""), font_size=8.5, align="right")
 
     return cur_y
 
 
-def notes_and_conditions(c, x, y, w):
-    # Free-form notes on the left, general condition on the right/full
-    notes_h = 50
-    y_notes = y - notes_h - 8
-    box(c, x, y_notes, w, notes_h, fill=FIELD_BG)
-    text_field(
-        c, "notes", x, y_notes, w, notes_h,
-        value=(
-            "Front brake pads worn below safety limit. Replaced pads and "
-            "inspected rotors.\n"
-            "Front brake pads worn below safety limit. Replaced pads and "
-            "inspected rotors.\n"
-            "Performed full synthetic oil change and replaced engine air "
-            "filter.\n"
-            "Vehicle test driven and operating normally."
-        ),
-        font_size=8, multiline=True,
-    )
-    # General Condition
-    gc_y = y_notes - 26
-    box(c, x, gc_y, w, 20, fill=FIELD_BG)
-    text_field(c, "general_condition", x, gc_y, w, 20,
-               value="General Condition", font_size=9)
+def payment_and_signature(c, x, y, w, data, checks):
+    """Row with payment-method checkboxes on the left, signature on right."""
+    section_title(c, "PAYMENT METHOD", x, y)
+    y -= 14
+    # Left block: checkboxes
+    opts = [
+        ("pm_cash", "Cash"),
+        ("pm_card", "Credit / Debit"),
+        ("pm_check", "Check"),
+        ("pm_other", "Other"),
+    ]
+    left_w = w * 0.55
+    right_w = w - left_w - 10
+    row_h = 22
+    box(c, x, y - row_h, left_w, row_h, fill=FIELD_BG)
+    slot = left_w / len(opts)
+    for i, (name, label) in enumerate(opts):
+        cx = x + i * slot + 10
+        cy = y - row_h + (row_h - 10) / 2
+        checkbox_field(c, name, cx, cy, size=10,
+                       checked=checks.get(name, False))
+        c.setFillColor(DARK_TEXT)
+        c.setFont("Helvetica", 8.5)
+        c.drawString(cx + 14, cy + 2, label)
+
+    # Right block: signature + date
+    sig_x = x + left_w + 10
+    sig_w = right_w
+    box(c, sig_x, y - row_h, sig_w, row_h, fill=FIELD_BG)
+    # Split into signature (70%) and date (30%) with small labels
+    date_w = 90
+    sig_only_w = sig_w - date_w
+    text_field(c, "signature", sig_x, y - row_h, sig_only_w, row_h,
+               value=data.get("signature", ""), font_size=9)
+    text_field(c, "signed_date", sig_x + sig_only_w, y - row_h, date_w,
+               row_h, value=data.get("signed_date", ""), font_size=9)
+    c.setFillColor(MUTED)
+    c.setFont("Helvetica-Bold", 7)
+    c.drawString(sig_x + 3, y - row_h - 8, "AUTHORIZED SIGNATURE")
+    c.drawString(sig_x + sig_only_w + 3, y - row_h - 8, "DATE")
+    return y - row_h - 12
+
+
+def notes_and_conditions(c, x, y, w, data):
+    # Notes (smaller) + General Condition (bigger, prominent)
+    c.setFillColor(NAVY)
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(x, y - 4, "NOTES")
+    notes_h = 30
+    ny = y - 8 - notes_h
+    box(c, x, ny, w, notes_h, fill=FIELD_BG)
+    text_field(c, "notes", x, ny, w, notes_h,
+               value=data.get("notes", ""), font_size=8, multiline=True)
+
+    # General Condition — bigger block with prominent header
+    gc_label_y = ny - 14
+    c.setFillColor(NAVY)
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(x, gc_label_y, "GENERAL CONDITION")
+    gc_h = 40
+    gc_y = gc_label_y - 4 - gc_h
+    box(c, x, gc_y, w, gc_h, fill=FIELD_BG)
+    text_field(c, "general_condition", x, gc_y, w, gc_h,
+               value=data.get("general_condition", ""),
+               font_size=9, multiline=True)
     return gc_y
 
 
-def build():
-    c = canvas.Canvas(OUTPUT, pagesize=LETTER)
-    c.setTitle("Mechanic Invoice Template")
-    c.setAuthor("Precision Auto Repair")
+def build(output_path, blank=False):
+    data = {} if blank else SAMPLE_DATA
+    checks = {} if blank else SAMPLE_CHECKBOXES
 
-    # Page border (subtle)
+    c = canvas.Canvas(output_path, pagesize=LETTER)
+    c.setTitle("Mechanic Invoice Template")
+    c.setAuthor("Editable Invoice Template")
+
+    # Subtle page border
     c.setStrokeColor(BORDER)
     c.setLineWidth(0.8)
     c.rect(MARGIN_L - 10, MARGIN_T - 10,
-           CONTENT_W + 20, PAGE_H - MARGIN_T - MARGIN_T + 20, stroke=1, fill=0)
+           CONTENT_W + 20, PAGE_H - 2 * MARGIN_T + 20, stroke=1, fill=0)
 
-    header(c)
+    header(c, data, blank)
 
-    # Layout: two columns below the header
     top_y = PAGE_H - MARGIN_T - 60
     col_gap = 20
     left_w = (CONTENT_W - col_gap) * 0.55
@@ -427,33 +550,28 @@ def build():
     left_x = MARGIN_L
     right_x = MARGIN_L + left_w + col_gap
 
-    # Right column top block: shop/invoice/dates
-    top_right_bottom = top_right_block(c, right_x, PAGE_H - MARGIN_T - 40)
+    top_right_bottom = top_right_block(c, right_x,
+                                       PAGE_H - MARGIN_T - 40, data)
 
-    # Left column: Vehicle Information
-    left_bottom = vehicle_information(c, left_x, top_y, left_w)
+    left_bottom = vehicle_information(c, left_x, top_y, left_w, data)
+    contact_bottom = customer_contact(c, right_x, top_right_bottom - 16,
+                                      right_w, data)
+    cust_info_bottom = customer_information(c, left_x, left_bottom - 16,
+                                            left_w, data)
 
-    # Right column: Customer Contact (below the invoice meta fields)
-    contact_bottom = customer_contact(
-        c, right_x, top_right_bottom - 16, right_w
-    )
-
-    # Left column continues with Customer Information
-    cust_info_bottom = customer_information(
-        c, left_x, left_bottom - 16, left_w
-    )
-
-    # Repair services table full width
     table_top = min(cust_info_bottom, contact_bottom) - 18
-    table_bottom = repair_services_table(c, MARGIN_L, table_top, CONTENT_W)
+    table_bottom = repair_services_table(c, MARGIN_L, table_top,
+                                         CONTENT_W, data)
 
-    # Notes + general condition
-    notes_and_conditions(c, MARGIN_L, table_bottom, CONTENT_W)
+    pay_bottom = payment_and_signature(c, MARGIN_L, table_bottom - 14,
+                                       CONTENT_W, data, checks)
+    notes_and_conditions(c, MARGIN_L, pay_bottom - 4, CONTENT_W, data)
 
     c.showPage()
     c.save()
-    print(f"wrote {OUTPUT}")
+    print(f"wrote {output_path}")
 
 
 if __name__ == "__main__":
-    build()
+    build("mechanic_invoice_template_BLANK.pdf", blank=True)
+    build("mechanic_invoice_template_SAMPLE.pdf", blank=False)
