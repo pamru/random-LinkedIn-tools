@@ -246,9 +246,9 @@ def draw_labeled_field(c, name, x, y, w, value="", field_h=16,
     text_field(c, name, x, y, w, field_h, value=value, font_size=9)
 
 
-def top_right_block(c, left_x, top_y, data):
-    col_w = (CONTENT_W / 2 - 10) / 2
+def top_right_block(c, left_x, top_y, data, total_w):
     gap = 10
+    col_w = (total_w - gap) / 2
     row1_y = top_y - 36
     draw_labeled_field(c, "shop_name", left_x, row1_y, col_w,
                        value=data.get("shop_name", ""),
@@ -474,15 +474,24 @@ def payment_and_signature(c, x, y, w, data, checks):
     right_w = w - left_w - 10
     row_h = 22
     box(c, x, y - row_h, left_w, row_h, fill=FIELD_BG)
+    cb_size = 10
+    cb_label_gap = 5
+    font = "Helvetica"
+    font_size = 8.5
+    # Center each (checkbox + label) group within an equal slot.
     slot = left_w / len(opts)
+    cy = y - row_h + (row_h - cb_size) / 2
+    text_y = cy + 2
     for i, (name, label) in enumerate(opts):
-        cx = x + i * slot + 10
-        cy = y - row_h + (row_h - 10) / 2
-        checkbox_field(c, name, cx, cy, size=10,
+        label_w = c.stringWidth(label, font, font_size)
+        group_w = cb_size + cb_label_gap + label_w
+        slot_left = x + i * slot
+        cx = slot_left + (slot - group_w) / 2
+        checkbox_field(c, name, cx, cy, size=cb_size,
                        checked=checks.get(name, False))
         c.setFillColor(DARK_TEXT)
-        c.setFont("Helvetica", 8.5)
-        c.drawString(cx + 14, cy + 2, label)
+        c.setFont(font, font_size)
+        c.drawString(cx + cb_size + cb_label_gap, text_y, label)
 
     # Right block: signature + date
     sig_x = x + left_w + 10
@@ -535,12 +544,6 @@ def build(output_path, blank=False):
     c.setTitle("Mechanic Invoice Template")
     c.setAuthor("Editable Invoice Template")
 
-    # Subtle page border
-    c.setStrokeColor(BORDER)
-    c.setLineWidth(0.8)
-    c.rect(MARGIN_L - 10, MARGIN_T - 10,
-           CONTENT_W + 20, PAGE_H - 2 * MARGIN_T + 20, stroke=1, fill=0)
-
     header(c, data, blank)
 
     top_y = PAGE_H - MARGIN_T - 60
@@ -551,7 +554,8 @@ def build(output_path, blank=False):
     right_x = MARGIN_L + left_w + col_gap
 
     top_right_bottom = top_right_block(c, right_x,
-                                       PAGE_H - MARGIN_T - 40, data)
+                                       PAGE_H - MARGIN_T - 40, data,
+                                       right_w)
 
     left_bottom = vehicle_information(c, left_x, top_y, left_w, data)
     contact_bottom = customer_contact(c, right_x, top_right_bottom - 16,
