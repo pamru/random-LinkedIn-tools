@@ -189,6 +189,14 @@ def draw_centered(c, text, x, y, w, font="Helvetica-Bold", size=8,
     c.drawString(x + (w - tw) / 2, y, text)
 
 
+def draw_right(c, text, x, y, w, font="Helvetica-Bold", size=8,
+               color=NAVY, right_pad=6):
+    c.setFillColor(color)
+    c.setFont(font, size)
+    tw = c.stringWidth(text, font, size)
+    c.drawString(x + w - tw - right_pad, y, text)
+
+
 def header(c, data, blank):
     if blank:
         # Logo placeholder box
@@ -397,11 +405,10 @@ def repair_services_table(c, x, y, w, data):
     ty = hy + 6
     draw_centered(c, "ITEM / SERVICE DESCRIPTION", x, ty, desc_w,
                   size=7.5)
-    draw_centered(c, "PARTS COST", x + desc_w, ty, parts_w, size=7.5)
-    draw_centered(c, "LABOR COST", x + desc_w + parts_w, ty, labor_w,
-                  size=7.5)
-    draw_centered(c, "TOTAL", x + desc_w + parts_w + labor_w, ty, total_w,
-                  size=7.5)
+    draw_right(c, "PARTS COST", x + desc_w, ty, parts_w, size=7.5)
+    draw_right(c, "LABOR COST", x + desc_w + parts_w, ty, labor_w, size=7.5)
+    draw_right(c, "TOTAL", x + desc_w + parts_w + labor_w, ty, total_w,
+               size=7.5)
 
     row_defs = [
         ("row1", 44),
