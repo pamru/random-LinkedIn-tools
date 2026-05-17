@@ -1,0 +1,13 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='840' height='660' viewBox='0 0 840 660'>
+<rect width='840' height='660' fill='#0d1b2a'/><circle cx='690' cy='120' r='80' fill='#ff7a00'/>
+<rect x='602' y='210' width='180' height='260' fill='#7b8793' stroke='#d4dde6' stroke-width='4'/>
+<g stroke='#c3cdd8'><line x1='612' y1='230' x2='772' y2='230'/><line x1='612' y1='250' x2='772' y2='250'/><line x1='612' y1='270' x2='772' y2='270'/></g>
+<text x='30' y='86' fill='#3fa9f5' font-size='62' font-family='Arial Narrow' font-weight='700'>YOUR AC</text>
+<text x='30' y='144' fill='#3fa9f5' font-size='62' font-family='Arial Narrow' font-weight='700'>ALWAYS DIES</text>
+<text x='30' y='202' fill='#3fa9f5' font-size='62' font-family='Arial Narrow' font-weight='700'>ON THE HOTTEST DAY.</text>
+<text x='34' y='276' fill='#f4f9ff' font-size='38' font-family='Georgia' font-weight='700'>A/C Tune-Up Special — $79</text>
+<rect x='36' y='300' rx='8' width='200' height='54' fill='#3fa9f5' stroke='#0d1b2a' stroke-width='2'/><text x='80' y='336' fill='#0d1b2a' font-size='30' font-family='Arial' font-weight='700'>BOOK NOW</text>
+<text x='34' y='390' fill='#f4f9ff' font-size='26' font-family='Arial'>Summit Heating &amp; Cooling</text><text x='34' y='422' fill='#f4f9ff' font-size='26' font-family='Arial'>(516) 555-0198</text>
+<rect x='24' y='586' width='792' height='50' fill='#ff7a00'/><text x='262' y='620' fill='#fff' font-size='36' font-family='Arial Narrow' font-weight='700'>FREE AIRFLOW CHECK</text>
+<rect x='736' y='20' width='84' height='84' fill='#fff' stroke='#3fa9f5' stroke-width='2'/><text x='748' y='132' fill='#d8ecff' font-size='12' font-family='Arial'>SCAN TO BOOK</text>
+</svg>

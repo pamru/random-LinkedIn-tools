@@ -1,0 +1,11 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='840' height='660' viewBox='0 0 840 660'>
+<rect width='445' height='660' fill='#304b3d'/><rect x='445' width='395' height='660' fill='#1f1f1f'/>
+<rect x='72' y='220' width='220' height='150' fill='#e7ddcf'/><polygon points='54,220 182,130 310,220' fill='#8f4f2b'/>
+<rect x='300' y='250' width='48' height='130' fill='#56634e'/><circle cx='324' cy='228' r='24' fill='#88947e'/><line x1='345' y1='300' x2='430' y2='274' stroke='#f2b705' stroke-width='6'/>
+<text x='468' y='112' fill='#f2b705' font-size='58' font-family='Arial Narrow' font-weight='700'>BUGS DON’T TAKE</text>
+<text x='468' y='168' fill='#f2b705' font-size='58' font-family='Arial Narrow' font-weight='700'>THE SEASON OFF</text>
+<text x='470' y='272' fill='#f5f1e8' font-size='44' font-family='Georgia' font-weight='700'>Starting At $99</text>
+<rect x='470' y='300' rx='8' width='170' height='52' fill='#d96b2b' stroke='#f2b705' stroke-width='2'/><text x='501' y='334' fill='#fff' font-size='28' font-family='Arial' font-weight='700'>CALL TODAY</text>
+<text x='470' y='388' fill='#f5f1e8' font-size='26' font-family='Arial'>Bug Shield Pest Control</text><text x='470' y='420' fill='#f5f1e8' font-size='26' font-family='Arial'>(516) 555-0198</text>
+<rect x='20' y='548' width='84' height='84' fill='#fff' stroke='#f2b705' stroke-width='2'/><text x='20' y='646' fill='#f9efda' font-size='12' font-family='Arial'>SCAN FOR FAST SERVICE</text>
+</svg>
