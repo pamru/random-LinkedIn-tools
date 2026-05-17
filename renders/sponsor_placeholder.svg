@@ -1,0 +1,9 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='840' height='660' viewBox='0 0 840 660'>
+<rect width='840' height='660' fill='#f7f1e8' stroke='#d4a437' stroke-width='6'/>
+<text x='56' y='160' fill='#163b6d' font-size='78' font-family='Georgia' font-weight='700'>YOUR BUSINESS</text>
+<text x='56' y='232' fill='#163b6d' font-size='78' font-family='Georgia' font-weight='700'>BELONGS HERE</text>
+<text x='58' y='312' fill='#163b6d' font-size='38' font-family='Arial'>Reach 2,500 Local Homes</text>
+<rect x='58' y='342' rx='10' width='380' height='56' fill='#163b6d' stroke='#d4a437' stroke-width='2'/><text x='82' y='378' fill='#f7f1e8' font-size='28' font-family='Arial' font-weight='700'>RESERVE YOUR CATEGORY</text>
+<circle cx='680' cy='240' r='88' fill='none' stroke='#d4a437' stroke-width='3'/><text x='634' y='250' fill='#163b6d' font-size='36' font-family='Georgia' font-weight='700'>SPONSOR</text>
+<rect x='736' y='548' width='84' height='84' fill='#fff' stroke='#d4a437' stroke-width='2'/><text x='706' y='646' fill='#163b6d' font-size='12' font-family='Arial'>SCAN TO INQUIRE</text>
+</svg>
